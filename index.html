@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EVO-LINK: THE FINAL BREACH</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg-dark: #020205;
+            --accent: #ff0055;
+            --rocket-blue: #00f2ff;
+            --gold: #ffcc00;
+            --neon-green: #39ff14;
+            --purple: #bc13fe;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+        body {
+            background: var(--bg-dark);
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            height: 450px;
+            border: 4px solid #333;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px #000;
+        }
+
+        #evolution-alert {
+            position: absolute;
+            width: 100%;
+            top: 30%;
+            text-align: center;
+            font-size: 18px;
+            color: var(--gold);
+            display: none;
+            z-index: 50;
+            text-shadow: 0 0 20px var(--gold);
+            animation: glitch-alert 0.2s infinite;
+        }
+
+        @keyframes glitch-alert {
+            0% { transform: translate(0) skew(0); }
+            20% { transform: translate(-5px, 2px) skew(5deg); color: #fff; }
+            40% { transform: translate(5px, -2px) skew(-5deg); color: var(--accent); }
+            100% { transform: translate(0); }
+        }
+
+        #boss-hp-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 15px;
+            background: #222;
+            border: 2px solid #fff;
+            display: none;
+        }
+
+        #boss-hp-fill {
+            width: 100%;
+            height: 100%;
+            background: var(--accent);
+            box-shadow: 0 0 15px var(--accent);
+            transition: width 0.2s;
+        }
+
+        #game-over, #win-screen, #level-select {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid var(--accent);
+            padding: 40px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        #level-select {
+            max-height: 90vh;
+            overflow-y: auto;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .difficulty-tier {
+            margin: 15px 0;
+            padding: 15px;
+            border: 2px solid #444;
+            background: rgba(255,0,85,0.1);
+            border-radius: 5px;
+        }
+
+        .difficulty-tier.unlocked {
+            border-color: #39ff14;
+            background: rgba(57,255,20,0.1);
+        }
+
+        .difficulty-tier.locked {
+            opacity: 0.5;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P';
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 5px 0 #900;
+        }
+
+        .btn:disabled {
+            background: #666;
+            box-shadow: 0 5px 0 #333;
+            cursor: not-allowed;
+        }
+
+        #tutorial-screen {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.98);
+            border: 4px solid var(--gold);
+            padding: 30px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            z-index: 110;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .tutorial-card {
+            text-align: left;
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 3px solid var(--rocket-blue);
+            background: rgba(0, 242, 255, 0.1);
+        }
+
+        .tutorial-card h3 {
+            color: var(--gold);
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        .tutorial-card p, .tutorial-card li {
+            color: #ddd;
+            font-size: 8px;
+            line-height: 1.4;
+            margin: 5px 0;
+        }
+
+        .tutorial-card ul {
+            margin-left: 15px;
+        }
+
+        .tutorial-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .tutorial-nav button {
+            flex: 1;
+            padding: 10px;
+            font-size: 10px;
+        }
+
+        #mobile-controls {
+            position: fixed;
+            bottom: 20px;
+            z-index: 50;
+            display: grid;
+            grid-template-areas: ". up ." "left down right" ". fire .";
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            max-width: 900px;
+        }
+
+        .m-btn {
+            width: 55px; height: 55px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #777;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border-radius: 50%;
+            color: #fff;
+            backdrop-filter: blur(5px);
+            touch-action: none;
+        }
+        #ctrl-up { grid-area: up; }
+        #ctrl-left { grid-area: left; }
+        #ctrl-right { grid-area: right; }
+        #ctrl-down { grid-area: down; }
+        #ctrl-fire { grid-area: fire; background: rgba(255, 0, 85, 0.3); border-color: var(--accent); }
+
+        #pause-menu {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid var(--rocket-blue);
+            padding: 40px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+            z-index: 120;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        #pause-menu h2 {
+            color: var(--rocket-blue);
+            margin-bottom: 30px;
+            font-size: 20px;
+        }
+
+        .pause-option {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 242, 255, 0.1);
+            border: 2px solid var(--rocket-blue);
+            color: #fff;
+            font-family: 'Press Start 2P';
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .pause-option:hover {
+            background: rgba(0, 242, 255, 0.3);
+            box-shadow: 0 0 20px var(--rocket-blue);
+        }
+
+        .pause-option:focus {
+            outline: none;
+            background: rgba(0, 242, 255, 0.4);
+        }
+
+        #danger-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: #fff;
+            padding: 30px;
+            border: 4px solid var(--accent);
+            text-align: center;
+            font-size: 16px;
+            z-index: 115;
+            display: none;
+            text-shadow: 0 0 20px #ff0055;
+            animation: pulse-danger 0.5s infinite;
+        }
+
+        @keyframes pulse-danger {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .glitch-effect {
+            animation: glitch 0.3s infinite;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            25% { transform: translate(-5px, 2px); }
+            50% { transform: translate(5px, -2px); }
+            75% { transform: translate(-2px, -5px); }
+            100% { transform: translate(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="900" height="450"></canvas>
+        <div id="evolution-alert">SYSTEM BREACH...</div>
+        
+        <div id="boss-hp-bar">
+            <div id="boss-hp-fill"></div>
+            <div style="font-size: 8px; position: absolute; top: -15px; width: 100%; text-align: center;">MULTIVERSE SENTINEL</div>
+        </div>
+
+        <div id="ui-overlay">
+            <div class="hud-row">
+                <div id="score-text">DATA: 00000</div>
+                <div id="phase-label" style="color: var(--rocket-blue)">PHASE: PRIMAL</div>
+            </div>
+            <div class="hud-row">
+                <div id="money-text">CREDITS: <span id="money-val" style="color:var(--gold)">$0</span></div>
+                <div id="dist-text">DISTANCE: 0m</div>
+            </div>
+            
+            <div id="lives-ui">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
+
+            <div id="game-over">
+                <h2 style="color: var(--accent);">SYSTEM FAILURE</h2>
+                <div id="final-stats" style="font-size: 8px; margin: 20px 0;"></div>
+                <button class="btn" onclick="location.reload()">REBOOT</button>
+            </div>
+
+            <div id="win-screen">
+                <h2 style="color: var(--neon-green);">LEVEL COMPLETE!</h2>
+                <p style="font-size: 10px; margin: 20px 0;" id="win-msg"></p>
+                <div id="win-stats" style="font-size: 8px; margin-bottom: 20px;"></div>
+                <button class="btn" style="background: var(--rocket-blue); box-shadow: 0 5px 0 #008899;" onclick="goToLevelSelect()">RETURN TO HALLS</button>
+            </div>
+
+            <div id="tutorial-screen">
+                <h2 style="color: var(--gold); margin-bottom: 20px;">HOW TO PLAY</h2>
+                <div id="tutorial-content"></div>
+                <div class="tutorial-nav">
+                    <button class="btn" style="padding: 8px;" onclick="skipTutorial()">SKIP</button>
+                    <button class="btn" style="padding: 8px; background: var(--rocket-blue); box-shadow: 0 3px 0 #008899;" onclick="nextTutorial()">NEXT</button>
+                </div>
+            </div>
+
+            <div id="pause-menu">
+                <h2>⏸️ PAUSED</h2>
+                <div class="pause-option" onclick="resumeGame()">RESUME GAME</div>
+                <div class="pause-option" onclick="goToLevelSelect()">RETURN TO HALLS</div>
+            </div>
+
+            <div id="danger-warning">
+                ⚠️ DANGER ZONE AHEAD ⚠️
+            </div>
+
+            <div id="level-select">
+                <h2 style="color: var(--gold); margin-bottom: 20px;">EVOLUTION HALLS</h2>
+                <p style="font-size: 8px; margin: 10px 0;">SELECT YOUR TRIAL</p>
+                <div id="levels-container"></div>
+                <button class="btn" onclick="location.reload()" style="width: 90%; margin-top: 30px;">BACK TO MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="m-btn" id="ctrl-up">⬆️</div>
+        <div class="m-btn" id="ctrl-left">⬅️</div>
+        <div class="m-btn" id="ctrl-down">⬇️</div>
+        <div class="m-btn" id="ctrl-right">➡️</div>
+        <div class="m-btn" id="ctrl-fire">🔥</div>
+    </div>
+
+<script>
+/** @type {HTMLCanvasElement} */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// LEVEL SYSTEM - Multi-tier progression
+const LEVELS = {
+    PRIMAL: [
+        { tier: 1, name: 'NOVICE', speedMult: 1.0, spawnMult: 1.0 },
+        { tier: 2, name: 'VETERAN', speedMult: 1.3, spawnMult: 1.4 },
+        { tier: 3, name: 'ELITE', speedMult: 1.8, spawnMult: 2.0 }
+    ],
+    INFILTRATION: [
+        { tier: 1, name: 'NOVICE', speedMult: 1.0, spawnMult: 1.0 },
+        { tier: 2, name: 'VETERAN', speedMult: 1.3, spawnMult: 1.4 },
+        { tier: 3, name: 'ELITE', speedMult: 1.8, spawnMult: 2.0 }
+    ],
+    VEHICULAR: [
+        { tier: 1, name: 'NOVICE', speedMult: 1.0, spawnMult: 1.0 },
+        { tier: 2, name: 'VETERAN', speedMult: 1.25, spawnMult: 1.35 },
+        { tier: 3, name: 'ELITE', speedMult: 1.55, spawnMult: 1.75 }
+    ],
+    'BATTLE-DOCK': [
+        { tier: 1, name: 'NOVICE', speedMult: 1.0, spawnMult: 1.0 },
+        { tier: 2, name: 'VETERAN', speedMult: 1.3, spawnMult: 1.4 },
+        { tier: 3, name: 'ELITE', speedMult: 1.8, spawnMult: 2.0 }
+    ],
+    JUDGMENT: [
+        { tier: 1, name: 'NOVICE', speedMult: 1.0, spawnMult: 1.0 },
+        { tier: 2, name: 'VETERAN', speedMult: 1.3, spawnMult: 1.4 },
+        { tier: 3, name: 'ELITE', speedMult: 1.8, spawnMult: 2.0 }
+    ]
+};
+
+let gameProgress = JSON.parse(localStorage.getItem('evoLinkProgress')) || {
+    PRIMAL: [true, false, false],
+    INFILTRATION: [true, false, false],
+    VEHICULAR: [true, false, false],
+    'BATTLE-DOCK': [true, false, false],
+    JUDGMENT: [true, false, false]
+};
+
+let tutorialSeen = localStorage.getItem('tutorialSeen') === 'true';
+let currentLevel = { phase: null, tier: 1 };
+
+function playSound(type) {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'jump') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    } else if (type === 'shoot') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    } else if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.setValueAtTime(1200, now + 0.05);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    } else if (type === 'hit') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'evo') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.2);
+        osc.frequency.linearRampToValueAtTime(900, now + 0.4);
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+    } else if (type === 'bossHit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+        gainNode.gain.setValueAtTime(0.05, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
+    } else if (type === 'heartbeat') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(80, now);
+        gainNode.gain.setValueAtTime(0.03, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    }
+}
+
+const PHASES = {
+    DINO: 'PRIMAL',        
+    HUMAN: 'INFILTRATION', 
+    CAR: 'VEHICULAR',      
+    MECH: 'BATTLE-DOCK',   
+    BOSS: 'JUDGMENT'       
+};
+
+const Sprites = {};
+function initSprites() {
+    const draw = (data, scale, color, glow) => {
+        const c = document.createElement('canvas');
+        c.width = data[0].length * scale + 10;
+        c.height = data.length * scale + 10;
+        const x = c.getContext('2d');
+        if(glow) { x.shadowBlur = 15; x.shadowColor = glow === true ? color : glow; }
+        x.fillStyle = color;
+        data.forEach((row, i) => {
+            [...row].forEach((char, j) => {
+                if (char === '1') x.fillRect(j * scale, i * scale, scale, scale);
+            });
+        });
+        return c;
+    };
+
+    Sprites.dino = draw(["      11111","      111111","      110111", "  1111111   "," 111111111  ","111111111   ","111111111   ","  11  11    "], 8, "#fff", "#00f2ff");
+    Sprites.human = draw(["  111  ","  111  "," 11111 ","  111  ","  1 1  ","  1 1  "], 8, "#39ff14", true);
+    Sprites.mech = draw(["  11111  "," 1111111 "," 1101101 ","111111111","111111111","  11111  "," 111 111 "," 11   11 "], 8, "#bc13fe", true);
+    
+    Sprites.bird = draw([" 11   ","1111  ","  1111","   11 "], 8, "#ff0055", true);
+    Sprites.groundEnemy = draw(["11111","11111","11111"], 8, "#f00", "#f00");
+
+    const carSVG = `<svg width="100" height="160" viewBox="0 0 100 160" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="20" width="80" height="120" rx="15" fill="#ff0055"/><rect x="15" y="40" width="70" height="30" rx="5" fill="#111" opacity="0.9"/><rect x="10" y="25" width="20" height="10" rx="2" fill="#fff" opacity="0.8"/><rect x="70" y="25" width="20" height="10" rx="2" fill="#fff" opacity="0.8"/></svg>`;
+    Sprites.carImg = new Image(); Sprites.carImg.src = 'data:image/svg+xml;base64,' + btoa(carSVG);
+
+    const bossSVG = `<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><polygon points="100,20 180,100 100,180 20,100" fill="#000" stroke="#ff0055" stroke-width="5"/><circle cx="100" cy="100" r="40" fill="#000" stroke="#00f2ff" stroke-width="2"/><rect x="95" y="40" width="10" height="120" fill="#ff0055"/><rect x="40" y="95" width="120" height="10" fill="#ff0055"/></svg>`;
+    Sprites.bossImg = new Image(); Sprites.bossImg.src = 'data:image/svg+xml;base64,' + btoa(bossSVG);
+
+    Sprites.trafficImg = new Image(); Sprites.trafficImg.src = 'data:image/svg+xml;base64,' + btoa(`<svg width="100" height="160" viewBox="0 0 100 160" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="20" width="70" height="120" rx="10" fill="#222" stroke="#00f2ff" stroke-width="2"/><rect x="20" y="35" width="60" height="35" rx="5" fill="#000"/></svg>`);
+    
+    Sprites.coin = draw(["  1  "," 111 ","1 1  "," 111 ","  1 1"," 111 ","  1  "], 6, "#ffcc00", true);
+    Sprites.rocket = draw(["  1  "," 111 ","11111"," 111 ","11111"], 6, "#00f2ff", true);
+    Sprites.fireball = draw([" 11 ","1111"," 11 "], 5, "#ff8800", true);
+    Sprites.bossBullet = draw(["11","11"], 5, "#ff0055", true);
+    // Lifespan (Heart) Sprite
+    Sprites.heart = draw([" 1 1 ","11111","11111"," 111 ","  1  "], 8, "#ff0055", true);
+    Sprites.eliteBird = draw([" 11   ","1111  ","  1111","   11 "], 8, "#ffcc00", true);
+    Sprites.shieldRefresh = draw(["  111 "," 11111","11 111","11 111"," 11111","  111 "], 7, "#39ff14", true);
+}
+
+let state = {
+    phase: PHASES.DINO, score: 0, money: 0, distance: 0, playing: false, over: false, win: false,
+    speed: 8, lives: 10, time: 0, playerX: 100, playerY: 350, vy: 0, vx: 0, lane: 1, targetLane: 1, shake: 0,
+    powerup: null, powerupTimer: 0, invuln: 0, isFiring: false,
+    bossHP: 100, bossX: 1200, bossY: 225, bossDir: 1, carTilt: 0, speedLines: [],
+    keys: { up: false, down: false, left: false, right: false },
+    difficultyMult: 1.0, spawnMult: 1.0, shieldActive: true,
+    bossPhase: 1, bossMaxHP: 100, lastEliteBirdSpawn: 0, paused: false,
+    escapeActive: false, escapeTime: 0, escapeMaxTime: 30, escapeSuccess: false,
+    corridorLayout: null, levelCount: 0
+};
+
+let entities = []; let projectiles = []; let bossProjectiles = []; let lastSpawn = 0;
+
+const getProj = (worldX, worldZ) => {
+    let scale = Math.max(0, 1 - (worldZ / 1000));
+    return { x: 450 + (worldX - 450) * scale, y: 150 + 300 * scale, s: scale };
+};
+
+function spawn() {
+    if (state.phase === PHASES.BOSS) {
+        // Calculate bo Phase based on health
+        state.bossPhase = 1;
+        if (state.bossHP < state.bossMaxHP * 0.67) state.bossPhase = 2;
+        if (state.bossHP < state.bossMaxHP * 0.34) state.bossPhase = 3;
+
+        // Phase-based projectile spawning
+        let spawnInterval = 35 / state.spawnMult;
+
+        // Phase 3: Increased fire rate
+        if (state.bossPhase === 3) spawnInterval = 25 / state.spawnMult;
+        // Phase 2: Slightly increased fire rate
+        else if (state.bossPhase === 2) spawnInterval = 30 / state.spawnMult;
+
+        if (state.time % Math.max(1, Math.floor(spawnInterval)) === 0) {
+            let vx = state.bossPhase === 3 ? -15 : -12;  // Phase 3: faster projectiles
+            bossProjectiles.push({ x: state.bossX, y: state.bossY, vx: vx, vy: (Math.random()-0.5)*12 });
+        }
+
+        // Phase 2 and 3: Spawn elite birds from sides
+        if (state.bossPhase >= 2) {
+            let birdSpawnInterval = state.bossPhase === 3 ? 40 : 60;  // More frequent in Phase 3
+            if (state.time % birdSpawnInterval === 0) {
+                let birdCount = state.bossPhase === 3 ? 3 : 2;
+                for (let i = 0; i < birdCount; i++) {
+                    let fromLeft = Math.random() > 0.5;
+                    entities.push({
+                        type: 'enemy',
+                        subType: 'elite-bird',
+                        x: fromLeft ? -50 : 950,
+                        y: 50 + Math.random() * 350,
+                        eliteBirdTime: 0
+                    });
+                }
+            }
+        }
+        return;
+    }
+
+    const now = Date.now();
+    let interval = (1100 - state.speed * 20);
+    if (state.phase === PHASES.CAR) interval = 220;
+    if (state.phase === PHASES.MECH) interval = 280;
+    interval = interval / state.spawnMult;
+
+    if (now - lastSpawn < interval) return;
+    lastSpawn = now;
+
+    const rand = Math.random();
+    if (state.phase === PHASES.CAR) {
+        let type = 'enemy';
+        // Car phase is harder: fewer coins, more hearts
+        if (rand < 0.20) type = 'heart';
+        else if (rand < 0.35) type = 'coin';
+
+        entities.push({ type: type, z: 1000, lane: Math.floor(Math.random() * 3) });
+    } else {
+        let type = 'enemy';
+        let subType = 'ground';
+        let yPos = 350;
+
+        // Strategic pickups: spawn more hearts when player weak and playing aggressively
+        if (state.lives < 10 && state.distance > 1000 && rand < 0.08) {
+            type = 'heart';  // Guaranteed heart when weak
+        } else if (state.phase === PHASES.BOSS && state.lives < 5 && rand < 0.10) {
+            type = 'shield-refresh';  // Rare shield pickup in boss fight when desperate
+        } else if (rand < 0.20) {
+            type = 'heart';  // Normal heart spawn
+        } else if (rand < (state.phase === PHASES.DINO ? 0.6 : 0.4)) {
+            type = 'coin';
+        } else if (rand < 0.10) {
+            type = 'rocket';
+        }
+
+        if (type === 'enemy') {
+            // Elite side-attacking birds in MECH and BOSS phases
+            if ((state.phase === PHASES.MECH || state.phase === PHASES.BOSS) && rand < 0.25) {
+                subType = 'elite-bird';
+                // Spawn from left or right edge
+                let fromLeft = Math.random() > 0.5;
+                yPos = 50 + Math.random() * 350;
+                entities.push({
+                    type: 'enemy',
+                    subType: 'elite-bird',
+                    x: fromLeft ? -50 : 950,
+                    y: yPos,
+                    eliteBirdTime: 0
+                });
+                return;  // Don't spawn normal enemy
+            } else if (state.phase === PHASES.HUMAN || state.phase === PHASES.MECH) {
+                // Normal birds occasionally
+                if (Math.random() > 0.5) {
+                    subType = 'bird';
+                    yPos = 150 + Math.random() * 100;
+                }
+            }
+        }
+
+        entities.push({ type: type, subType: subType, x: 1000, y: yPos });
+    }
+}
+
+function update() {
+    if (!state.playing || state.over || state.win || state.paused) return;
+    state.time++; 
+    state.distance += state.speed / 60; 
+    state.score += (state.powerup === 'rocket' ? 4 : 1);
+    
+    if (state.invuln > 0) state.invuln--;
+    if (state.powerupTimer > 0) { state.powerupTimer--; if (state.powerupTimer <= 0) state.powerup = null; }
+
+    if ((state.isFiring || state.phase === PHASES.MECH) && state.time % 12 === 0) {
+        if (state.phase === PHASES.MECH || state.phase === PHASES.BOSS) {
+            projectiles.push({ x: state.playerX + 50, y: state.playerY - 30, vx: 18 });
+            playSound('shoot');
+        }
+    }
+
+    if (state.money >= 150 && state.phase === PHASES.DINO) { 
+        state.phase = PHASES.HUMAN; 
+        state.speed = 10;
+        triggerEvo("LVL 2: HUMAN! [UNLOCKED: BIRDS & AGILITY]"); 
+    }
+    if (state.distance >= 350 && state.phase === PHASES.HUMAN) {
+        state.phase = PHASES.CAR;
+        state.speed = 30;
+        triggerEvo("LVL 3: CYBER-CAR! [BOOM: WARP DRIVE]");
+    }
+    if (state.distance >= 1100 && state.phase === PHASES.CAR) {
+        state.phase = PHASES.MECH;
+        state.speed = 12;
+        state.levelCount = 0;
+        triggerEvo("LVL 4: BATTLE MECH! [AUTO-CANNNONS ACTIVE]");
+    }
+
+    // Trigger escape sequence once in MECH phase (after 200m traveled in MECH)
+    if (state.phase === PHASES.MECH && state.distance >= 1300 && !state.escapeActive && state.levelCount === 0) {
+        state.levelCount = 1;
+        initEscapeSequence();
+    }
+
+    if (state.distance >= 2400 && state.phase === PHASES.MECH) {
+        state.phase = PHASES.BOSS;
+        state.speed = 0;
+        document.getElementById('boss-hp-bar').style.display = 'block';
+        triggerEvo("LVL 5: FINAL JUDGMENT! [FREE MOVE ACTIVE]"); 
+    }
+
+    if (state.phase === PHASES.BOSS) {
+        let s = 9;
+        if (state.keys.up) state.playerY -= s;
+        if (state.keys.down) state.playerY += s;
+        if (state.keys.left) state.playerX -= s;
+        if (state.keys.right) state.playerX += s;
+        state.playerX = Math.max(50, Math.min(450, state.playerX));
+        state.playerY = Math.max(50, Math.min(400, state.playerY));
+    } else if (state.phase === PHASES.CAR) {
+        let targetX = 150 + (state.targetLane * 300);
+        state.playerX += (targetX - state.playerX) * 0.15;
+        state.carTilt = (targetX - state.playerX) * 0.003;
+        state.playerY = 380;
+        if(Math.random() < 0.5) state.speedLines.push({ angle: Math.random()*Math.PI*2, dist: 0.1, speed: 0.04 + Math.random()*0.03 });
+    } else {
+        if (state.powerup === 'rocket') {
+            if (state.keys.up) state.playerY -= 10; else if (state.playerY < 350) state.playerY += 6;
+            state.vy = 0;
+        } else {
+            state.vy += 1.0; state.playerY += state.vy; if (state.playerY > 350) { state.playerY = 350; state.vy = 0; }
+        }
+    }
+
+    if (state.phase === PHASES.BOSS) {
+        if (state.bossX > 700) state.bossX -= 3;
+        state.bossY += state.bossDir * 5;
+        if (state.bossY > 350 || state.bossY < 100) state.bossDir *= -1;
+
+        for(let i = bossProjectiles.length - 1; i >= 0; i--) {
+            let p = bossProjectiles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (Math.abs(p.x - state.playerX) < 40 && Math.abs(p.y - state.playerY) < 40) { 
+                if (state.invuln <= 0) hit(); 
+                bossProjectiles.splice(i, 1); 
+                continue;
+            }
+            if (p.x < -100) bossProjectiles.splice(i, 1);
+        }
+
+        for(let i = projectiles.length - 1; i >= 0; i--) {
+            let p = projectiles[i];
+            if (Math.abs(p.x - state.bossX) < 80 && Math.abs(p.y - state.bossY) < 80) {
+                state.bossHP -= 1.2; state.shake = 12; projectiles.splice(i, 1); playSound('bossHit');
+                document.getElementById('boss-hp-fill').style.width = Math.max(0, state.bossHP) + '%';
+                if (state.bossHP <= 0) { winGame(); break; }
+            }
+        }
+    }
+
+    for(let i=projectiles.length-1; i>=0; i--) { 
+        let p = projectiles[i];
+        p.x += p.vx; 
+        if (state.phase === PHASES.MECH) {
+            for(let ei = entities.length - 1; ei >= 0; ei--) {
+                let e = entities[ei];
+                if (e.type === 'enemy' && Math.abs(p.x - e.x) < 50 && Math.abs(p.y - (e.y || 350)) < 50) {
+                    entities.splice(ei, 1);
+                    projectiles.splice(i, 1);
+                    state.score += 50;
+                    break;
+                }
+            }
+        }
+        if (projectiles[i] && projectiles[i].x > 1000) projectiles.splice(i,1); 
+    }
+
+    for (let i = entities.length - 1; i >= 0; i--) {
+        let e = entities[i];
+        if (!e) continue;
+        if (state.phase === PHASES.CAR) {
+            e.z -= state.speed;
+            if (e.z < 60 && e.z > -60) {
+                if (Math.abs(state.playerX - (150 + e.lane * 300)) < 90) {
+                    if (e.type === 'coin') { state.money += 100; playSound('coin'); entities.splice(i,1); }
+                    else if (e.type === 'heart') { state.lives = Math.min(10, state.lives + 1); playSound('evo'); entities.splice(i,1); }
+                    else if (state.invuln <= 0) { hit(); entities.splice(i,1); }
+                }
+            }
+            if (e.z < -200) entities.splice(i, 1);
+        } else {
+            // Handle elite bird movement with weaving pattern
+            if (e.subType === 'elite-bird') {
+                e.eliteBirdTime = (e.eliteBirdTime || 0) + 1;
+                let targetX = state.playerX;
+                let waveOffset = Math.sin(e.eliteBirdTime / 20) * 80;
+                e.x += (targetX - e.x) * 0.02;  // Smooth approach to player
+                e.y += (waveOffset - (e.y - 225)) * 0.05;  // Weaving motion
+            } else {
+                e.x -= state.speed;
+            }
+
+            // Wall collision (escape sequence)
+            if (e.type === 'wall') {
+                e.x += e.vx;
+                if (Math.abs(e.x - state.playerX) < 80 && Math.abs(e.y - state.playerY) < 60) {
+                    if (state.invuln <= 0) hit();
+                }
+                if (e.x < -200) entities.splice(i, 1);
+                continue;
+            }
+
+            // Collision detection
+            if (Math.abs(e.x - state.playerX) < 60 && Math.abs((e.y || 350) - state.playerY) < 60) {
+                if (e.type === 'coin') {
+                    state.money += 50;
+                    playSound('coin');
+                    entities.splice(i,1);
+                } else if (e.type === 'heart') {
+                    state.lives = Math.min(10, state.lives + 1);
+                    playSound('evo');
+                    entities.splice(i,1);
+                } else if (e.type === 'shield-refresh') {
+                    // Rare shield pickup: restore shield and give brief invuln
+                    state.shieldActive = true;
+                    state.invuln = 100;
+                    playSound('evo');
+                    triggerEvo("SHIELD RESTORED!");
+                    entities.splice(i,1);
+                } else if (e.type === 'rocket') {
+                    state.powerup = 'rocket';
+                    playSound('evo');
+                    state.powerupTimer = 500;
+                    entities.splice(i,1);
+                } else if (state.invuln <= 0) {
+                    hit();
+                    entities.splice(i,1);
+                }
+            }
+            if (e.x < -200) entities.splice(i, 1);
+        }
+    }
+
+    // Handle escape sequence timing
+    if (state.escapeActive) {
+        state.escapeTime += 1/60; // Convert frames to seconds
+        if (checkEscapeSuccess()) {
+            state.escapeActive = false;
+            state.levelCount = 0;
+        }
+        // Play heartbeat every 0.5 seconds (not every frame!)
+        if (Math.floor(state.escapeTime * 2) % 2 === 0 && Math.floor((state.escapeTime - 1/60) * 2) % 2 !== 0) {
+            playSound('heartbeat');
+        }
+    }
+
+    draw(); spawn(); requestAnimationFrame(update);
+}
+
+function hit() {
+    state.shake = 30; state.invuln = 100; playSound('hit');
+
+    if (state.shieldActive) {
+        state.shieldActive = false;
+        triggerEvo("SHIELD DEPLETED!");
+        return;
+    }
+
+    state.lives--;
+    if (state.lives <= 0) {
+        state.over = true;
+        document.getElementById('final-stats').innerHTML = `DISTANCE: ${Math.floor(state.distance)}m<br>DATA: ${state.score}`;
+        document.getElementById('game-over').style.display = 'block';
+    }
+}
+
+function winGame() {
+    state.win = true; playSound('evo');
+    gameProgress[currentLevel.phase][currentLevel.tier - 1] = true;
+    localStorage.setItem('evoLinkProgress', JSON.stringify(gameProgress));
+
+    let tierName = LEVELS[currentLevel.phase][currentLevel.tier - 1].name;
+    let nextTierIdx = currentLevel.tier;
+    let msg = `TIER ${currentLevel.tier} CONQUERED!`;
+    if (nextTierIdx < 3) {
+        msg += `\nNEXT: ${LEVELS[currentLevel.phase][nextTierIdx].name} UNLOCKED`;
+    } else {
+        msg += '\nALL TIERS MASTERED!';
+    }
+    document.getElementById('win-msg').innerHTML = msg;
+
+    document.getElementById('win-stats').innerHTML = `TIME: ${Math.floor(state.time/60)}s<br>TOTAL DATA: ${state.score}`;
+    document.getElementById('win-screen').style.display = 'block';
+    document.getElementById('boss-hp-bar').style.display = 'none';
+}
+
+function triggerEvo(txt) {
+    playSound('evo');
+    const alert = document.getElementById('evolution-alert');
+    alert.innerText = txt; alert.style.display = 'block'; state.shake = 40;
+    setTimeout(() => alert.style.display = 'none', 3500);
+}
+
+function goToLevelSelect() {
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('win-screen').style.display = 'none';
+    document.getElementById('pause-menu').style.display = 'none';
+    buildLevelSelect();
+    document.getElementById('level-select').style.display = 'block';
+}
+
+function togglePause() {
+    if (!state.playing || state.over || state.win) return;
+    state.paused = !state.paused;
+    if (state.paused) {
+        document.getElementById('pause-menu').style.display = 'block';
+    } else {
+        document.getElementById('pause-menu').style.display = 'none';
+    }
+}
+
+function resumeGame() {
+    state.paused = false;
+    document.getElementById('pause-menu').style.display = 'none';
+}
+
+function showDangerWarning(text) {
+    const warning = document.getElementById('danger-warning');
+    warning.innerText = text;
+    warning.style.display = 'block';
+    setTimeout(() => {
+        warning.style.display = 'none';
+    }, 3000);
+}
+
+function initEscapeSequence() {
+    state.escapeActive = true;
+    state.escapeTime = 0;
+    state.escapeSuccess = false;
+    // FIXED: Keep speed at 8 so distance continues to progress!
+    state.speed = 8;
+    showDangerWarning("⚠️ ESCAPE SEQUENCE INITIATED ⚠️");
+    playSound('evo');
+    // Spawn maze walls
+    for (let i = 0; i < 8; i++) {
+        entities.push({
+            type: 'wall',
+            x: 50 + (i * 110),
+            y: Math.random() > 0.5 ? 150 : 300,
+            width: 80,
+            height: 40,
+            vx: -2
+        });
+    }
+}
+
+function checkEscapeSuccess() {
+    if (state.escapeTime >= state.escapeMaxTime) {
+        state.escapeActive = false;
+        state.escapeSuccess = true;
+        triggerEvo("ESCAPE SUCCESSFUL! +250 CREDITS");
+        state.money += 250;
+        // FIXED: Restore proper speed based on phase
+        state.speed = state.phase === PHASES.MECH ? 12 : 8;
+        // Clear all walls from escape sequence
+        entities = entities.filter(e => e.type !== 'wall');
+        return true;
+    }
+    return false;
+}
+
+function initCorridorChoice() {
+    state.corridorLayout = Math.random() > 0.5 ? 'left' : 'right';
+    if (state.corridorLayout === 'left') {
+        showDangerWarning("LEFT PATH: HIGH RISK, HIGH REWARD!");
+        state.spawnMult *= 1.5;
+    } else {
+        showDangerWarning("RIGHT PATH: SAFE & STEADY!");
+        state.spawnMult *= 0.7;
+    }
+}
+
+function buildLevelSelect() {
+    const container = document.getElementById('levels-container');
+    container.innerHTML = '';
+
+    const phaseOrder = ['PRIMAL', 'INFILTRATION', 'VEHICULAR', 'BATTLE-DOCK', 'JUDGMENT'];
+
+    phaseOrder.forEach(phase => {
+        const phaseDiv = document.createElement('div');
+        phaseDiv.innerHTML = `<h3 style="color: var(--rocket-blue); text-align: left; margin: 20px 0 10px 0; font-size: 12px;">${phase}</h3>`;
+
+        LEVELS[phase].forEach((level, idx) => {
+            const isUnlocked = gameProgress[phase][idx];
+            const tierDiv = document.createElement('div');
+            tierDiv.className = `difficulty-tier ${isUnlocked ? 'unlocked' : 'locked'}`;
+
+            const lockIcon = isUnlocked ? '✓' : '🔒';
+            tierDiv.innerHTML = `
+                <div style="font-size: 10px; margin-bottom: 8px;">${lockIcon} TIER ${level.tier}: ${level.name}</div>
+                <div style="font-size: 8px; color: #aaa; margin-bottom: 10px;">Speed: ${(level.speedMult*100).toFixed(0)}% | Spawn: ${(level.spawnMult*100).toFixed(0)}%</div>
+                <button class="btn" style="width: 100%; box-shadow: 0 3px 0 #600; padding: 10px;" ${!isUnlocked && idx > 0 ? 'disabled' : ''} onclick="startLevelGame('${phase}', ${level.tier})">START</button>
+            `;
+            phaseDiv.appendChild(tierDiv);
+        });
+
+        container.appendChild(phaseDiv);
+    });
+}
+
+function startLevelGame(phase, tier) {
+    currentLevel = { phase, tier };
+    const levelConfig = LEVELS[phase][tier - 1];
+
+    state = {
+        phase: phase === 'PRIMAL' ? PHASES.DINO : (
+            phase === 'INFILTRATION' ? PHASES.HUMAN : (
+            phase === 'VEHICULAR' ? PHASES.CAR : (
+            phase === 'BATTLE-DOCK' ? PHASES.MECH : PHASES.BOSS))),
+        score: 0, money: 0, distance: 0, playing: true, over: false, win: false,
+        speed: (phase === 'PRIMAL' ? 9 : (phase === 'INFILTRATION' ? 10 : (phase === 'VEHICULAR' ? 30 : (phase === 'BATTLE-DOCK' ? 12 : 0)))),
+        lives: 10, time: 0, playerX: 100, playerY: 350, vy: 0, vx: 0, lane: 1, targetLane: 1, shake: 0,
+        powerup: null, powerupTimer: 0, invuln: 0, isFiring: false,
+        bossHP: 100, bossX: 1200, bossY: 225, bossDir: 1, carTilt: 0, speedLines: [],
+        keys: { up: false, down: false, left: false, right: false },
+        difficultyMult: levelConfig.speedMult,
+        spawnMult: levelConfig.spawnMult,
+        shieldActive: true,
+        paused: false, escapeActive: false, escapeTime: 0, escapeMaxTime: 30, escapeSuccess: false,
+        corridorLayout: null, levelCount: 0, bossPhase: 1, bossMaxHP: 100
+    };
+
+    state.speed *= state.difficultyMult;
+
+    entities = []; projectiles = []; bossProjectiles = []; lastSpawn = 0;
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('win-screen').style.display = 'none';
+    document.getElementById('level-select').style.display = 'none';
+    document.getElementById('boss-hp-bar').style.display = 'none';
+
+    if (state.phase === PHASES.BOSS) {
+        state.bossHP = 100 + (tier - 1) * 30;
+        state.bossMaxHP = state.bossHP;  // Track max HP for phase calculations
+        state.bossPhase = 1;  // Start at phase 1
+        document.getElementById('boss-hp-fill').style.width = '100%';
+    }
+
+    initSprites();
+    update();
+}
+
+function draw() {
+    ctx.save();
+    if(state.shake > 0) { ctx.translate((Math.random()-0.5)*state.shake, (Math.random()-0.5)*state.shake); state.shake *= 0.9; }
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,900,450);
+    
+    if (state.phase === PHASES.CAR) {
+        ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, 900, 150);
+        ctx.strokeStyle = 'rgba(0, 242, 255, 0.6)';
+        state.speedLines.forEach((sl, i) => {
+            let x1 = 450 + Math.cos(sl.angle) * sl.dist * 1000;
+            let y1 = 150 - Math.abs(Math.sin(sl.angle)) * sl.dist * 500;
+            sl.dist += sl.speed;
+            let x2 = 450 + Math.cos(sl.angle) * sl.dist * 1000;
+            let y2 = 150 - Math.abs(Math.sin(sl.angle)) * sl.dist * 500;
+            ctx.lineWidth = sl.dist * 8;
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            if(sl.dist > 1.8) state.speedLines.splice(i, 1);
+        });
+        ctx.fillStyle = '#0a3a0a'; ctx.fillRect(0, 150, 900, 300);
+        ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(450, 150); ctx.lineTo(1000, 450); ctx.lineTo(-100, 450); ctx.fill();
+
+        for (let i = 0; i < 15; i++) {
+            let segLen = 100;
+            let offset = (state.time * state.speed * 1.5) % segLen;
+            let z = i * segLen - offset; if (z < 0 || z > 1000) continue;
+            let zNext = z + segLen / 2;
+            let lEdge = getProj(0, z), rEdge = getProj(900, z), lEdgeN = getProj(0, zNext), rEdgeN = getProj(900, zNext);
+            let lDiv = getProj(300, z), lDivN = getProj(300, zNext);
+            ctx.fillStyle = Math.floor((z + offset) / segLen) % 2 === 0 ? '#ff0055' : '#ffffff';
+            ctx.beginPath(); ctx.moveTo(lEdge.x, lEdge.y); ctx.lineTo(lEdgeN.x, lEdgeN.y); ctx.lineTo(getProj(-100, zNext).x, getProj(-100, zNext).y); ctx.lineTo(getProj(-100, z).x, getProj(-100, z).y); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(rEdge.x, rEdge.y); ctx.lineTo(rEdgeN.x, rEdgeN.y); ctx.lineTo(getProj(1000, zNext).x, getProj(1000, zNext).y); ctx.lineTo(getProj(1000, z).x, getProj(1000, z).y); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * lDiv.s; ctx.beginPath(); ctx.moveTo(lDiv.x, lDiv.y); ctx.lineTo(lDivN.x, lDivN.y); ctx.stroke();
+            let rDiv = getProj(600, z), rDivN = getProj(600, zNext);
+            ctx.beginPath(); ctx.moveTo(rDiv.x, rDiv.y); ctx.lineTo(rDivN.x, rDivN.y); ctx.stroke();
+        }
+    } else {
+        let accent = (state.phase === PHASES.BOSS || state.phase === PHASES.MECH) ? '#ff0055' : '#00f2ff';
+        ctx.strokeStyle = accent;
+        for(let i=0; i<900; i+=50) { let off = (state.time*state.speed)%50; ctx.beginPath(); ctx.moveTo(i-off, 0); ctx.lineTo(i-off, 450); ctx.stroke(); }
+        ctx.fillStyle = '#050505'; ctx.fillRect(0, 350, 900, 100);
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 350); ctx.lineTo(900, 350); ctx.stroke();
+    }
+
+    entities.forEach(e => {
+        if (state.phase === PHASES.CAR) {
+            let p = getProj(150 + (e.lane * 300), e.z);
+            let img = e.type === 'enemy' ? Sprites.trafficImg : (e.type === 'coin' ? Sprites.coin : Sprites.heart);
+            ctx.drawImage(img, p.x-50*p.s, p.y-80*p.s, 100*p.s, 160*p.s);
+        } else if (e.type === 'wall') {
+            // Draw escape sequence walls
+            ctx.fillStyle = '#ff0055';
+            ctx.fillRect(e.x, e.y, e.width, e.height);
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(e.x, e.y, e.width, e.height);
+        } else {
+            let img = Sprites.groundEnemy;
+            if (e.type === 'enemy') {
+                if (e.subType === 'elite-bird') img = Sprites.eliteBird;
+                else if (e.subType === 'bird') img = Sprites.bird;
+            } else if (e.type === 'shield-refresh') {
+                img = Sprites.shieldRefresh;
+            } else {
+                img = Sprites[e.type];
+            }
+            ctx.drawImage(img, e.x, e.y-40);
+        }
+    });
+
+    if (state.phase === PHASES.BOSS) {
+        ctx.drawImage(Sprites.bossImg, state.bossX-100, state.bossY-100);
+        bossProjectiles.forEach(p => ctx.drawImage(Sprites.bossBullet, p.x, p.y));
+    }
+
+    if (state.invuln % 4 < 2) {
+        ctx.save();
+        ctx.translate(state.playerX, state.playerY);
+        if (state.phase === PHASES.CAR) {
+            ctx.rotate(state.carTilt);
+            ctx.drawImage(Sprites.carImg, -40, -60, 80, 120);
+        } else {
+            let s = Sprites.human;
+            if (state.phase === PHASES.DINO) s = Sprites.dino;
+            if (state.phase === PHASES.MECH) s = Sprites.mech;
+            ctx.drawImage(s, -35, -70, 70, 70);
+            if (state.powerup === 'rocket') {
+                ctx.fillStyle = '#00f2ff'; ctx.fillRect(-10, 5, 20, 15);
+            }
+        }
+        ctx.restore();
+    }
+
+    projectiles.forEach(p => ctx.drawImage(Sprites.fireball, p.x, p.y));
+    ctx.restore();
+
+    document.getElementById('score-text').innerText = `DATA: ${Math.floor(state.score).toString().padStart(5, '0')}`;
+    document.getElementById('money-val').innerText = `$${state.money}`;
+    document.getElementById('dist-text').innerText = `DIST: ${Math.floor(state.distance)}m`;
+
+    let tierLabel = (currentLevel.phase && currentLevel.tier) ? ` [T${currentLevel.tier}]` : '';
+    let shieldIcon = state.shieldActive ? '🛡️' : '❌';
+    let difficultyLabel = (state.difficultyMult > 1.0) ? ` ${(state.difficultyMult * 100).toFixed(0)}%` : '';
+
+    // Boss phase display for dramatic effect
+    let phaseDisplay = `PHASE: ${state.phase}${tierLabel}`;
+    if (state.phase === PHASES.BOSS && currentLevel && currentLevel.tier) {
+        let phaseNames = ['ASSAULT', 'REINFORCEMENTS', 'DESPERATE'];
+        let bossPhaseName = phaseNames[state.bossPhase - 1];
+        phaseDisplay = `BOSS [${bossPhaseName}] - P${state.bossPhase}`;
+
+        // Color indication of danger
+        let el = document.getElementById('phase-label');
+        if (state.bossPhase === 3) {
+            el.style.color = '#ff0055';  // Red for danger
+        } else if (state.bossPhase === 2) {
+            el.style.color = '#ffcc00';  // Yellow for caution
+        } else {
+            el.style.color = '#39ff14';  // Green for safe
+        }
+    } else {
+        document.getElementById('phase-label').style.color = 'var(--rocket-blue)';  // Reset to normal
+    }
+
+    document.getElementById('phase-label').innerText = phaseDisplay;
+    document.getElementById('lives-ui').innerText = `${shieldIcon} ` + "❤️".repeat(Math.max(0, state.lives));
+}
+
+function startGame() {
+    if (!tutorialSeen) {
+        buildTutorial();
+        document.getElementById('tutorial-screen').style.display = 'block';
+    } else {
+        buildLevelSelect();
+        document.getElementById('level-select').style.display = 'block';
+    }
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('win-screen').style.display = 'none';
+}
+
+let tutorialPage = 0;
+const tutorialPages = [
+    {
+        title: 'CONTROLS',
+        content: `<p>KEYBOARD: Arrow Keys or WASD</p>
+                  <p>🔼 UP / SPACE - Jump</p>
+                  <p>🔽 DOWN - Crouch</p>
+                  <p>◀ LEFT - Move Left</p>
+                  <p>▶ RIGHT - Move Right</p>
+                  <p>F or Z - Fire!</p>`
+    },
+    {
+        title: 'SHIELD SYSTEM',
+        content: `<p>Start every level with a SHIELD 🛡️</p>
+                  <p>1st Hit - Shield breaks</p>
+                  <p>2nd Hit - Game Over</p>
+                  <p>Shields reset on each new level!</p>`
+    },
+    {
+        title: 'PICKUPS',
+        content: `<p>💰 COINS - Earn money</p>
+                  <p>❤️ HEARTS - Restore 1 life</p>
+                  <p>🚀 ROCKET - Temporary flight!</p>
+                  <p>Collect them and avoid enemies!</p>`
+    },
+    {
+        title: 'PHASES',
+        content: `<p>PRIMAL - Dodge enemies</p>
+                  <p>INFILTRATION - Face flying birds</p>
+                  <p>VEHICULAR - 3-lane car racing!</p>
+                  <p>BATTLE-DOCK - Auto-firing mech</p>
+                  <p>JUDGMENT - Boss battle!</p>`
+    },
+    {
+        title: 'GET READY',
+        content: `<p style="font-size:10px; margin: 15px 0;">Complete all 15 challenges across 5 phases:</p>
+                  <p style="font-size:9px;">✓ NOVICE TIER (Easy)</p>
+                  <p style="font-size:9px;">✓ VETERAN TIER (Hard)</p>
+                  <p style="font-size:9px;">✓ ELITE TIER (INSANE!)</p>
+                  <p style="margin-top: 15px; color: var(--gold);">GOOD LUCK!</p>`
+    }
+];
+
+function buildTutorial() {
+    const content = document.getElementById('tutorial-content');
+    const page = tutorialPages[tutorialPage];
+    content.innerHTML = `
+        <div class="tutorial-card">
+            <h3>${page.title}</h3>
+            ${page.content}
+        </div>
+        <div style="text-align: center; color: #aaa; font-size: 8px; margin-top: 15px;">
+            PAGE ${tutorialPage + 1}/${tutorialPages.length}
+        </div>
+    `;
+}
+
+function nextTutorial() {
+    tutorialPage++;
+    if (tutorialPage >= tutorialPages.length) {
+        skipTutorial();
+    } else {
+        buildTutorial();
+    }
+}
+
+function skipTutorial() {
+    tutorialSeen = true;
+    localStorage.setItem('tutorialSeen', 'true');
+    document.getElementById('tutorial-screen').style.display = 'none';
+    buildLevelSelect();
+    document.getElementById('level-select').style.display = 'block';
+}
+
+window.addEventListener('keydown', e => {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if (e.code === 'Escape') { togglePause(); return; }
+    if (e.code === 'ArrowUp' || e.code === 'Space') { 
+        state.keys.up = true;
+        if (state.phase !== PHASES.BOSS && state.powerup !== 'rocket' && state.playerY >= 340) { state.vy = -20; playSound('jump'); }
+    }
+    if (e.code === 'ArrowDown') state.keys.down = true;
+    if (e.code === 'ArrowLeft') {
+        state.keys.left = true;
+        if (state.phase === PHASES.CAR) state.targetLane = Math.max(0, state.targetLane - 1);
+    }
+    if (e.code === 'ArrowRight') {
+        state.keys.right = true;
+        if (state.phase === PHASES.CAR) state.targetLane = Math.min(2, state.targetLane + 1);
+    }
+    if (e.code === 'KeyF' || e.code === 'KeyZ') state.isFiring = true;
+});
+
+window.addEventListener('keyup', e => {
+    if (['ArrowUp','Space'].includes(e.code)) state.keys.up = false;
+    if (e.code === 'ArrowDown') state.keys.down = false;
+    if (e.code === 'ArrowLeft') state.keys.left = false;
+    if (e.code === 'ArrowRight') state.keys.right = false;
+    if (['KeyF','KeyZ'].includes(e.code)) state.isFiring = false;
+});
+
+const setupBtn = (id, key) => {
+    const el = document.getElementById(id);
+    el.ontouchstart = (e) => {
+        e.preventDefault();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        state.keys[key] = true;
+        if (key === 'up' && state.phase !== PHASES.BOSS && state.powerup !== 'rocket' && state.playerY >= 340) {
+            state.vy = -20; playSound('jump');
+        }
+        if (key === 'left' && state.phase === PHASES.CAR) state.targetLane = Math.max(0, state.targetLane - 1);
+        if (key === 'right' && state.phase === PHASES.CAR) state.targetLane = Math.min(2, state.targetLane + 1);
+        if (key === 'fire') state.isFiring = true;
+    };
+    el.ontouchend = (e) => {
+        e.preventDefault();
+        state.keys[key] = false;
+        if (key === 'fire') state.isFiring = false;
+    };
+};
+setupBtn('ctrl-up', 'up'); setupBtn('ctrl-down', 'down');
+setupBtn('ctrl-left', 'left'); setupBtn('ctrl-right', 'right'); 
+setupBtn('ctrl-fire', 'fire');
+
+startGame();
+</script>
+</body>
+</html>
